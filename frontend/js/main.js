@@ -1,5 +1,5 @@
-// ====== CONFIG: set your Render URL here ======
-const API_BASE = 'https://YOUR_RENDER_URL_HERE'; // <-- REPLACE
+// ====== CONFIG: set your Railway URL here ======
+const API_BASE = 'https://ayamil-ai.up.railway.app'; // <-- Railway URL
 
 // ====== tiny DOM helpers ======
 const $ = (sel) => document.querySelector(sel);
@@ -9,18 +9,21 @@ const el = (tag, cls = '') => { const d = document.createElement(tag); if (cls) 
 async function request(path, body = null, method = 'POST', token = null) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = 'Bearer ' + token;
+
   const res = await fetch(API_BASE + path, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined
   });
-  // try parse json
+
   let json = null;
   try { json = await res.json(); } catch (e) { /* ignore */ }
+
   if (!res.ok) {
-    const message = json && json.detail ? json.detail : (json && json.error) || (json && JSON.stringify(json)) || res.statusText;
+    const message = json?.detail || json?.error || JSON.stringify(json) || res.statusText;
     throw new Error(message);
   }
+
   return json;
 }
 
@@ -41,7 +44,7 @@ const signupForm = $('#signup-form');
 if (signupForm) {
   signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    $('#signup-error') && ($('#signup-error').style.display = 'none');
+    $('#signup-error')?.style.display = 'none';
     const data = Object.fromEntries(new FormData(signupForm));
     try {
       const res = await request('/signup', data, 'POST');
@@ -61,7 +64,7 @@ const loginForm = $('#login-form');
 if (loginForm) {
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    $('#login-error') && ($('#login-error').style.display = 'none');
+    $('#login-error')?.style.display = 'none';
     const data = Object.fromEntries(new FormData(loginForm));
     try {
       const res = await request('/login', data, 'POST');
@@ -85,7 +88,6 @@ if (location.pathname.endsWith('chat.html')) {
     location.href = 'login.html';
   }
 
-  // UI elements
   const userNameEl = $('#user-name');
   const logoutBtn = $('#logout');
   const trainBtn = $('#train-btn');
@@ -101,7 +103,6 @@ if (location.pathname.endsWith('chat.html')) {
 
   logoutBtn.addEventListener('click', () => { clearSession(); location.href = 'index.html'; });
 
-  // Helper to push message block
   function pushMessage(text, who = 'assistant') {
     const m = el('div', 'message ' + (who === 'user' ? 'user' : 'assistant'));
     m.innerText = text;
@@ -109,12 +110,10 @@ if (location.pathname.endsWith('chat.html')) {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  // Load previously saved business description (optional: from backend)
+  // Load saved business description
   loadBusinessBtn.addEventListener('click', async () => {
     trainStatusEl.style.display = 'none';
     try {
-      // If you want to fetch saved business from backend, implement GET endpoint.
-      // For now we try to read last saved text from localStorage (quick UX)
       const saved = localStorage.getItem('business_text_' + user.id);
       if (saved) {
         businessTextEl.value = saved;
@@ -124,20 +123,19 @@ if (location.pathname.endsWith('chat.html')) {
         trainStatusEl.innerText = 'No local saved business text found';
         trainStatusEl.style.display = 'block';
       }
-    } catch (err) {
+    } catch {
       trainStatusEl.innerText = 'Could not load business text';
       trainStatusEl.style.display = 'block';
     }
   });
 
-  // Train/save business text (calls /train-business)
+  // Train/save business text
   trainBtn.addEventListener('click', async () => {
     trainStatusEl.style.display = 'none';
     const text = businessTextEl.value.trim();
     if (!text) { alert('Write something about your business'); return; }
     try {
       await request('/train-business', { user_id: user.id, business_text: text }, 'POST', token);
-      // store a local copy for quick reload
       localStorage.setItem('business_text_' + user.id, text);
       trainStatusEl.innerText = 'Business saved & training simulated';
       trainStatusEl.style.display = 'block';
@@ -147,44 +145,39 @@ if (location.pathname.endsWith('chat.html')) {
     }
   });
 
-  // Chat form submit
+  // Chat submission
   chatForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     chatError.style.display = 'none';
     const text = messageInput.value.trim();
     if (!text) return;
-    // Render user message immediately
     pushMessage(text, 'user');
     messageInput.value = '';
 
     try {
       const res = await request('/chat', { user_id: user.id, message: text }, 'POST', token);
-      const reply = res.reply || 'No reply';
-      pushMessage(reply, 'assistant');
+      pushMessage(res.reply || 'No reply', 'assistant');
     } catch (err) {
       chatError.innerText = err.message || 'Chat failed';
       chatError.style.display = 'block';
-      // show fallback assistant message
       pushMessage('Sorry, I could not get a reply right now. Try again.', 'assistant');
     }
   });
 
-  // Optionally load last conversation from localStorage
+  // Load last conversation from localStorage
   (function loadCachedConversation() {
     const conv = JSON.parse(localStorage.getItem('conv_' + user.id) || '[]');
-    conv.forEach(m => {
-      pushMessage(m.text, m.sender);
-    });
+    conv.forEach(m => pushMessage(m.text, m.sender));
   })();
 
-  // Save conversation to localStorage periodically
+  // Save conversation periodically
   const saveConversation = () => {
-    const nodes = Array.from(messagesEl.children);
-    const conv = nodes.map(n => ({ text: n.innerText, sender: n.classList.contains('user') ? 'user' : 'assistant' }));
+    const conv = Array.from(messagesEl.children).map(n => ({
+      text: n.innerText,
+      sender: n.classList.contains('user') ? 'user' : 'assistant'
+    }));
     localStorage.setItem('conv_' + user.id, JSON.stringify(conv));
   };
-  // Save every 5 seconds (light)
   setInterval(saveConversation, 5000);
   window.addEventListener('beforeunload', saveConversation);
 }
-
