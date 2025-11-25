@@ -1,22 +1,25 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Signup — Ayamil AI</title>
-<link rel="stylesheet" href="css/styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Signup — Ayamil AI</title>
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<main class="container">
-<h2>Create account</h2>
-<form id="signup-form">
-<input name="name" placeholder="Name" required />
-<input name="email" type="email" placeholder="Email" required />
-<input name="password" type="password" placeholder="Password" required />
-<button type="submit">Sign up</button>
-</form>
-<p>Already have an account? <a href="login.html">Login</a></p>
-</main>
-<script src="js/main.js"></script>
+  <main class="container">
+    <h2>Create account</h2>
+    <form id="signup-form" class="form">
+      <input name="name" placeholder="Name" required />
+      <input name="email" type="email" placeholder="Email" required />
+      <input name="password" type="password" placeholder="Password" required />
+      <button type="submit">Sign up</button>
+    </form>
+
+    <p style="margin-top:12px">Already have an account? <a href="login.html">Login</a></p>
+    <div id="signup-error" style="color:#b91c1c;margin-top:12px;display:none"></div>
+  </main>
+
+  <script src="js/main.js"></script>
 </body>
 </html>
