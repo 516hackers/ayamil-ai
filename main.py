@@ -4,98 +4,83 @@ from bson import ObjectId
 from dotenv import load_dotenv
 import os
 
-# Import your modules (make sure they exist and are correct)
+# Load environment variables
+load_dotenv()
+
+# Import internal modules
 from db import users, businesses, chats
 from schemas import SignupIn, LoginIn, BusinessTrainIn, ChatIn
 from auth import hash_password, verify_password, create_access_token, decode_token
 from ai_engine import generate_reply
 
-load_dotenv()
+app = FastAPI(title="Ayamil Coders AI - Backend")
 
-app = FastAPI(title='Ayamil Coders AI - Backend')
-
-# CORS settings
-origins = os.getenv('CORS_ORIGINS', '*')
+# Allow CORS from any origin (can restrict to your frontend)
+origins = os.getenv("CORS_ORIGINS", "*")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origins] if origins != '*' else ['*'],
+    allow_origins=[origins] if origins != "*" else ["*"],
     allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# -------------------------
-# Signup Endpoint
-# -------------------------
+# ======== AUTH ROUTES ========
 @app.post("/signup")
-async def signup(data: SignupIn):
-    if users.find_one({"email": data.email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
-    hashed = hash_password(data.password)
-    user = {
-        "name": data.name,
-        "email": data.email,
-        "password": hashed,
-    }
-    users.insert_one(user)
-    return {"message": "Signup successful"}
+async def signup(payload: SignupIn):
+    if users.find_one({"email": payload.email}):
+        raise HTTPException(status_code=400, detail="Email already exists")
+    hashed = hash_password(payload.password)
+    user = {"name": payload.name, "email": payload.email, "password": hashed}
+    res = users.insert_one(user)
+    user["_id"] = str(res.inserted_id)
+    token = create_access_token(user["_id"])
+    return {"token": token, "user": {"id": user["_id"], "name": user["name"], "email": user["email"]}}
 
-# -------------------------
-# Login Endpoint
-# -------------------------
 @app.post("/login")
-async def login(data: LoginIn):
-    user = users.find_one({"email": data.email})
-    if not user or not verify_password(data.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_access_token({"user_id": str(user["_id"])})
-    return {"access_token": token, "token_type": "bearer"}
+async def login(payload: LoginIn):
+    user = users.find_one({"email": payload.email})
+    if not user or not verify_password(payload.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = create_access_token(str(user["_id"]))
+    return {"token": token, "user": {"id": str(user["_id"]), "name": user["name"], "email": user["email"]}}
 
-# -------------------------
-# Chat Endpoint
-# -------------------------
-@app.post("/chat")
-async def chat(data: ChatIn, authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Missing Authorization header")
-    try:
-        user_data = decode_token(authorization.split(" ")[1])
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    reply = generate_reply(data.message, user_id=user_data["user_id"])
-    
-    # Store chat in DB
-    chats.insert_one({
-        "user_id": ObjectId(user_data["user_id"]),
-        "message": data.message,
-        "reply": reply
-    })
-    return {"reply": reply}
-
-# -------------------------
-# Train Business AI Endpoint
-# -------------------------
+# ======== BUSINESS TRAINING ROUTE ========
 @app.post("/train-business")
-async def train_business(data: BusinessTrainIn, authorization: str = Header(None)):
+async def train_business(payload: BusinessTrainIn, authorization: str = Header(None)):
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
-    try:
-        user_data = decode_token(authorization.split(" ")[1])
-    except Exception:
+    token = authorization.replace("Bearer ", "")
+    user_id = decode_token(token)
+    if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
-
-    # Train AI logic here
+    # Save business description
     businesses.update_one(
-        {"user_id": ObjectId(user_data["user_id"])},
-        {"$set": {"business_data": data.business_data}},
+        {"user_id": user_id},
+        {"$set": {"business_text": payload.business_text}},
         upsert=True
     )
-    return {"message": "Business AI trained successfully"}
+    return {"status": "success", "message": "Business text saved"}
 
-# -------------------------
-# Test Endpoint
-# -------------------------
-@app.get("/")
-async def root():
-    return {"message": "Ayamil Coders AI backend is running"}
+# ======== CHAT ROUTE ========
+@app.post("/chat")
+async def chat(payload: ChatIn, authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+    token = authorization.replace("Bearer ", "")
+    user_id = decode_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Call AI engine to generate reply
+    reply = await generate_reply(user_id, payload.message)
+
+    # Save chat to DB (optional)
+    chats.insert_one({"user_id": user_id, "message": payload.message, "reply": reply})
+
+    return {"reply": reply}
+
+# ======== HEALTH CHECK ========
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
