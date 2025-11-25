@@ -1,0 +1,8 @@
+fastapi==0.100.0
+uvicorn[standard]==0.22.0
+motor==4.4.0 # async MongoDB driver
+python-jose==3.3.0 # JWT
+passlib[bcrypt]==1.7.4 # password hashing
+pydantic==1.10.9
+python-dotenv==1.0.0
+httpx==0.24.0 # optional for calling OpenAI or other APIs
