@@ -1,1 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chat — Ayamil AI</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main class="container">
+    <header style="display:flex;justify-content:space-between;align-items:center">
+      <h2>Your Business Assistant</h2>
+      <div>
+        <span id="user-name" style="margin-right:8px"></span>
+        <button id="logout" class="btn ghost">Logout</button>
+      </div>
+    </header>
+
+    <section id="trainer" style="margin-top:18px">
+      <h3>Train your AI</h3>
+      <textarea id="business-text" placeholder="Write about your business, services, tone, FAQs..." rows="6"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="train-btn" class="btn">Save & Train</button>
+        <button id="load-business" class="btn ghost">Load saved</button>
+      </div>
+      <div id="train-status" style="margin-top:8px;color:#064e3b;display:none"></div>
+    </section>
+
+    <section id="chatbox" style="margin-top:20px">
+      <div id="messages" style="min-height:220px;border-radius:8px;padding:12px;overflow:auto;background:#f8fafc"></div>
+
+      <form id="chat-form" style="display:flex;gap:8px;margin-top:12px">
+        <input id="message-input" placeholder="Ask something about your business" autocomplete="off" style="flex:1" />
+        <button type="submit" class="btn">Send</button>
+      </form>
+    </section>
+
+    <div id="chat-error" style="color:#b91c1c;margin-top:12px;display:none"></div>
+  </main>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
 
